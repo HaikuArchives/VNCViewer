@@ -1,6 +1,9 @@
 BeOS VNCviewer Change History
 =============================
 
+Release 6 (01/07/19) revol@free.fr:
+	- merged with a forked source from Christopher J. Plymire (chrisjp@eudoramail.com)
+
 Release 5 (98/10/25):
 	- adapted for BeOS R4b2
 	- implemented 'Send Ctrl-Alt-Del'

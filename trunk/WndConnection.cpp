@@ -29,11 +29,19 @@
 #include <Beep.h>
 #include <Bitmap.h>
 #include <Clipboard.h>
+#include <InterfaceDefs.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
 #include <Message.h>
 #include <Region.h>
 #include <Screen.h>
+#include <String.h>
+#include <UTF8.h>
+#include <View.h>
+#include <Window.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "keysymdef.h"
 #include "WndConnection.h"
@@ -104,7 +112,13 @@ inline rgb_color get_color( uchar r, uchar g, uchar b )
 WndConnection::WndConnection( const char* title, Connection* conn, uint32 space, BRect frame )
 	: myConnection(conn),
 	  myWindow(NULL),
-	  myView(NULL)
+	  myView(NULL),
+	  myIsFullScreen(false),
+	  myIsMinimized(false),
+	  myStartFullScreen(false),
+	  myFullScreenAlertShown(false),
+	  myDesktopRect(frame),
+	  myUpdateDelay(25000)
 {
 	BRect	limits;
 
@@ -126,7 +140,40 @@ WndConnection::WndConnection( const char* title, Connection* conn, uint32 space,
 	}
 #endif
 
-	myWindow = new MyWindow( this, frame, title, B_TITLED_WINDOW, 0 );
+	/*
+	**	no screen, so fallback to window
+	*/
+	if ( !App::GetApp()->GetOptions()->m_FullScreen )//space == -1)
+	{
+//		myWindow = new MyWindow( this, frame, title, B_TITLED_WINDOW, 0 );
+		myWindow = new MyDirectWindow(this, frame, title, B_TITLED_WINDOW, 0 );
+
+		/*
+		**	limit window size
+		*/
+/*		float	minw, minh, maxw, maxh;
+	myWindow->Lock(); //XXX: useless ?
+		limits = myWindow->ConvertFromScreen( frame );
+		myWindow->GetSizeLimits( &minw, &maxw, &minh, &maxh );
+		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() );
+	myWindow->Unlock();
+*/	}
+	else
+	{
+		myWindow = new MyDirectWindow(this, frame, title, B_TITLED_WINDOW, 0 );
+			
+		/*
+		**	limit window size
+		*/
+/*		float	minw, minh, maxw, maxh;
+	myWindow->Lock(); //XXX: useless ?
+		limits = myWindow->ConvertFromScreen( frame );
+		myWindow->GetSizeLimits( &minw, &maxw, &minh, &maxh );
+		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() );
+		((BDirectWindow *)myWindow)->SetFullScreen(true);
+	myWindow->Unlock();
+*/		
+	}
 
 	/*
 	**	create menus
@@ -143,6 +190,19 @@ WndConnection::WndConnection( const char* title, Connection* conn, uint32 space,
 	menu->SetTargetForItems( App::GetApp() );
 	bar->AddItem( menu );
 
+	menu = new BMenu( "View" );
+	menu->AddItem( new BMenuItem( "Fullscreen", new BMessage(msg_fullscreen) ) );
+	menu->AddItem( new BMenuItem( "Connection infos", new BMessage(msg_view_cnx_infos) ) );
+	
+//	menu->AddItem( new BSeparatorItem() );
+//	menu->AddItem( new BMenuItem( "About VNCviewer", new BMessage(B_ABOUT_REQUESTED) ) );
+//	menu->AddItem( new BSeparatorItem() );
+//	menu->AddItem( new BMenuItem( "Quit", new BMessage(B_QUIT_REQUESTED), 'Q' ) );
+	menu->SetTargetForItems( myWindow );
+	bar->AddItem( menu );
+
+	myMenuBar = bar; // XXX: so we can hide it later
+	
 	/*
 	**	add menu bar
 	*/
@@ -150,24 +210,49 @@ WndConnection::WndConnection( const char* title, Connection* conn, uint32 space,
 	myWindow->AddChild( bar );
 	myWindow->SetKeyMenuBar( bar );
 
-	/*
-	**	resize window to fit menu bar
-	*/
-	int barheight = (int)bar->Frame().bottom + 1;
-	myWindow->ResizeBy( 0, barheight );
+	int barheight = (int)(bar->Frame().bottom - bar->Frame().top + 1);
 
-	/*
-	**	limit window size
-	*/
 	float	minw, minh, maxw, maxh;
 	limits = myWindow->ConvertFromScreen( frame );
 	myWindow->GetSizeLimits( &minw, &maxw, &minh, &maxh );
-	myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() + barheight );
+	
+
+//XXX:
+		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() + barheight);
+
+
+	if (!App::GetApp()->GetOptions()->m_FullScreen) {// XXX: handle this dynamically
+//		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() + barheight);
+
+		myWindow->ResizeBy( 0, barheight );
+		// shift to window coordinate system
+		frame.OffsetTo( BPoint(0, barheight) /*B_ORIGIN*/ );
+	} else {
+		myStartFullScreen = myIsFullScreen = true;
+		myFullScreenAlertShown = true;
+		App::Alert("Hint: To escape from fullscreen mode, press\nShift-Control-Esc");
+//		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() - barheight);
+
+//		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() );
+		myMenuBar->Hide();
+		myWindow->ResizeBy(0, 0);
+		frame.OffsetTo( BPoint(0, 0) /*B_ORIGIN*/ );
+	}
+	
+
+
+	/*
+	**	resize window to fit menu bar
+	*/
+
+	
+
+
+//	if (App::GetApp()->GetOptions()->m_FullScreen) // XXX: handle this dynamically
+	if (myStartFullScreen) // XXX: handle this dynamically
+		((BDirectWindow *)myWindow)->SetFullScreen(true);
 
 	myWindow->Unlock();
-
-	// shift to window coordinate system
-	frame.OffsetTo( BPoint(0,barheight) /*B_ORIGIN*/ );
 
 	/*
 	**	attach view to window
@@ -190,6 +275,9 @@ WndConnection::WndConnection( const char* title, Connection* conn, uint32 space,
 */
 WndConnection::~WndConnection( void )
 {
+//if (myStartFullScreen) // XXX: handle this dynamically
+//		((BDirectWindow *)myWindow)->SetFullScreen(false);
+//	SetFullScreen(false);
 }
 
 /****
@@ -287,6 +375,60 @@ WndConnection::Create( Connection* conn )
 	return new WndConnection( conn->GetDesktopName(), conn, space, rect );
 }
 
+void
+WndConnection::SetFullScreen(bool full)
+{
+	BRect	limits;
+	
+	if (myIsFullScreen == full)
+		return;
+
+	myWindow->Lock();
+//	myView->Lock();
+	int barheight = (int)(myMenuBar->Frame().bottom - myMenuBar->Frame().top + 1);
+
+	float	minw, minh, maxw, maxh;
+	
+//	limits = myWindow->ConvertFromScreen( myWindow->Frame() );
+	myWindow->GetSizeLimits( &minw, &maxw, &minh, &maxh );
+	
+	if (full) {// XXX: handle this dynamically
+		BScreen scr;
+		if (!myFullScreenAlertShown) {
+			myFullScreenAlertShown = true;
+			App::Alert("Hint: To escape from fullscreen mode, press\nShift-Control-Esc");
+		}
+		limits = myWindow->ConvertFromScreen( myWindow->Frame() );
+//		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() - barheight);
+
+//		myWindow->ResizeBy( 0, -barheight );
+		// shift to window coordinate system
+		myView->MoveBy(0, - barheight);
+//		myView->Frame().OffsetTo( BPoint(0, barheight) /*B_ORIGIN*/ );
+//		if (myMenuShown)
+			myMenuBar->Hide();
+		((BDirectWindow *)myWindow)->SetFullScreen(true);
+	} else {
+		limits = myWindow->ConvertFromScreen( myDesktopRect );
+		((BDirectWindow *)myWindow)->SetFullScreen(false);
+//		if (!myMenuShown)
+			myMenuBar->Show();
+		myView->MoveBy(0, barheight);
+		// = myView->Origin();
+//		myView->SetFrame.OffsetTo( BPoint(0, 0) /*B_ORIGIN*/ );
+//		myView->SetOrigin(o);
+		myWindow->ResizeBy(0, barheight);
+//		myWindow->ResizeTo(myDesktopRect);
+//		myWindow->SetSizeLimits( minw, limits.Width(), minh, limits.Height() + barheight);
+	}
+
+	App::GetApp()->GetOptions()->m_FullScreen = full;
+	myIsFullScreen = full;
+
+//	myView->Unlock();
+	myWindow->Unlock();
+}
+
 /****
 **	@purpose	Handle window message. Called by myWindow.
 **	@param		msg		Message to handle.
@@ -303,8 +445,74 @@ WndConnection::MessageReceived( BMessage* msg )
 		myConnection->SendKeyEvent( XK_Alt_L, false );
 		return true;
 	}
+	switch (msg->what) {
+
+	case msg_save_cnx:
+		break;
+	case msg_view_cnx_infos:
+		{
+			BString txt("Connection informations\n\n");
+			const rfbServerInitMsg *smsg;
+			if (myConnection->GetDesktopName())
+				txt << "Desktop name: " << myConnection->GetDesktopName() << "\n";
+			if (smsg = myConnection->GetServerInit()) {
+				txt << "Size: " << smsg->framebufferWidth;
+				txt << " x " << smsg->framebufferHeight << "\n";
+				
+			}
+			App::Alert(txt.String());
+		}
+		break;
+	case msg_update_delay:
+		break;
+	case msg_fullscreen:
+		SetFullScreen(!IsFullScreen());
+		return true;
+	case B_ZOOM:
+		SetFullScreen(!IsFullScreen());
+		return true;
+	case B_WINDOW_ACTIVATED:
+	puts("B_WINDOW_ACTIVATED");
+		Minimize(false);
+		break;
+//	case B_WORKSPACE_ACTIVATED:
+//		break;
+/*
+	case B_KEY_UP:
+		puts("B_KEY_UP");
+		break;
+	case B_KEY_DOWN:
+		puts("B_KEY_DOWN");
+		break;
+	case B_UNMAPPED_KEY_UP:
+		puts("B_UNMAPPED_KEY_UP");
+		break;
+	case B_UNMAPPED_KEY_DOWN:
+		puts("B_UNMAPPED_KEY_DOWN");
+		break;
+*/		
+	}
 	return false;
 }
+
+//XXX: fixme
+void WndConnection::Minimize(bool yes)
+{
+return; // XXX fixme !
+puts("WndConnection::Minimize()");
+	if ((yes == true) && (myIsMinimized == false)) {
+//	if (yes) {
+		puts("mini(true)");
+		myConnection->SetAutoUpdate(false);
+	} else if ((yes == false) && (myIsMinimized == true)) {
+//	} else {
+		puts("mini(false)");
+		myConnection->SetAutoUpdate(true);
+//				myConnection->SendIncrementalFramebufferUpdateRequest();
+	}
+	myIsMinimized = yes;
+}
+
 
 /****
 **	@purpose	Safely close, quit and shutdown this window and thread.
@@ -315,6 +523,15 @@ WndConnection::QuitSafe( void )
 	// remove shortcut
 	myWindow->RemoveShortcut( 'X', B_COMMAND_KEY );
 
+	SetFullScreen(false);
+
+	// XXX: ???
+	if( myView->oldMode.virtual_width != 0 )
+	{
+		BScreen mainScreen;
+		mainScreen.SetMode( &myView->oldMode , false );
+	}
+	
 	// quit window
 	myWindow->Lock();
 	myWindow->Quit();
@@ -372,15 +589,31 @@ WndConnection::ServerCutText( void )
 ViewConnection::ViewConnection( BRect frame, const char* name, Connection* conn )
 	: BView(frame, name, B_FOLLOW_LEFT | B_FOLLOW_TOP, B_WILL_DRAW),
 	  myBitmap(NULL),
-	  myConnection(conn)
+	  myConnection(conn),
+  	  myKeymap(NULL),
+	  myUTF_Map(NULL)
 {
 	assert( conn != NULL );
+
+	get_key_map(&myKeymap, &myUTF_Map);
 
 	myOldModifiers = modifiers();
 
 	// initialize view
 	frame.OffsetTo( B_ORIGIN );
 	Init( frame );
+}
+
+ViewConnection::~ViewConnection(void)
+{
+	if (myKeymap) free(myKeymap);
+	if (myUTF_Map) free(myUTF_Map);
+}
+
+void dump_timing_info(display_timing *pTiming)
+{
+	printf("pixel_clock = %d\nh_display = %d\nh_sync_start = %d\nh_sync_end = %d\nh_total = %d\n" , pTiming->pixel_clock , pTiming->h_display, pTiming->h_sync_start, pTiming->h_sync_end , pTiming->h_total );
+	printf("v_display = %d\nv_sync_start = %d\nv_sync_end = %d\nv_total = %d\nflags = %d\n" , pTiming->v_display , pTiming->v_sync_start , pTiming->v_sync_end , pTiming->v_total , pTiming->flags );
 }
 
 /****
@@ -393,6 +626,15 @@ ViewConnection::Init( BRect rect )
 	/*
 	**	init socket buffer
 	*/
+	oldMode.virtual_width = 0;
+	
+	// new zlib stuff
+	m_decompStreamInited = false;
+	for (int i = 0; i < 4; i++)
+		m_tightZlibStreamActive[i] = false;
+	m_zlibbuf = NULL;
+	m_zlibbufsize = 0;
+
 	myNetBuf		= NULL;
 	myNetBufSize	= 0;
 	CheckBufferSize( INITIALNETBUFSIZE );
@@ -401,6 +643,50 @@ ViewConnection::Init( BRect rect )
 	color_space space = myConnection->SetupPixelFormat();
 	UpdateFormat( myConnection->GetFormat() );
 
+if ( App::GetApp()->GetOptions()->m_FullScreen )
+{
+		BScreen mainScreen;
+		
+		display_mode curMode;
+		mainScreen.GetMode(&curMode);
+		oldMode = curMode;
+		//dump_timing_info( &curMode.timing );
+		int resolution = (int)(((float)curMode.timing.pixel_clock * 1000.0) / (curMode.timing.v_total * curMode.timing.h_total) + .5);
+		
+		display_mode* pList;
+		uint32 modeCount = 0;
+				
+		mainScreen.GetModeList( &pList , &modeCount);
+		int i;
+		for(i = 0; i < modeCount; i ++)
+		{
+			int resolution2 = (int)((float)pList[i].timing.pixel_clock * 1000.0) / (pList[i].timing.v_total * pList[i].timing.h_total);
+			if( pList[i].virtual_width == myConnection->GetServerInit()->framebufferWidth && pList[i].virtual_height == myConnection->GetServerInit()->framebufferHeight && pList[i].space == curMode.space )
+			{
+				if( abs( resolution - resolution2 ) < 2 )
+				{
+					mainScreen.SetMode( &pList[i] , false);
+					break;
+				}
+			}
+		}
+		
+		if( i == modeCount ) // Couldn't find the same resolution, find the nearest higher one
+		{
+			for(int i = 0; i < modeCount; i ++)
+			{
+				int resolution2 = (int)((float)pList[i].timing.pixel_clock * 1000.0) / (pList[i].timing.v_total * pList[i].timing.h_total);
+				if( pList[i].virtual_width == myConnection->GetServerInit()->framebufferWidth && pList[i].virtual_height == myConnection->GetServerInit()->framebufferHeight && pList[i].space == curMode.space )
+				{
+					if( resolution2 > resolution )
+					{
+						mainScreen.SetMode( &pList[i] , false);
+						break;
+					}
+				}
+			}
+		}
+}
 #if 1
 	/*
 	**	allocate off-screen bitmap and view
@@ -463,16 +749,124 @@ ViewConnection::Draw( BRect update )
 	DrawBitmap( myBitmap, update, update );
 }
 
+bool ViewConnection::compare_to_utfmap(char *bytes, int len, int32 index)
+{
+	int clen;
+	clen = myUTF_Map[index++];
+	if (len != clen)
+		return false;
+	while (clen--)
+		if (myUTF_Map[index++] != *bytes++)
+			return false;
+	return true;
+}
+
 /****
 **	@purpose	Convert Be key value to X key value.
 **	@param		byte	Key value according to Be keycoding (UTF8)
 **	@result		X key value.
 */
 CARD32
-ViewConnection::GetXKey( char byte )
+ViewConnection::GetXKey( char *bytes, int len, CARD32 *dead_key)
 {
-	u16		key;
-#if 0
+	u16		key = 0;
+	char byte;
+
+	*dead_key = 0;
+
+	if ((len > 1)) {
+		char buff[4];
+		int32 srclen=len;
+		int32 dstlen=4;
+		int32 cookie=0;
+
+		for (int i=1; i<32; i+=2) {
+			if (compare_to_utfmap(bytes, len, myKeymap->grave_dead_key[i])) {
+				*dead_key = XK_dead_grave;
+				key = myUTF_Map[myKeymap->grave_dead_key[i-1]+1];
+				printf("deadkey: %c\n", key);
+				goto gotone;
+			}
+		}
+
+		for (int i=1; i<32; i+=2) {
+			if (compare_to_utfmap(bytes, len, myKeymap->acute_dead_key[i])) {
+				*dead_key = XK_dead_acute;
+				key = myUTF_Map[myKeymap->acute_dead_key[i-1]+1];
+				printf("deadkey: %c\n", key);
+				goto gotone;
+			}
+		}
+
+		for (int i=1; i<32; i+=2) {
+			if (compare_to_utfmap(bytes, len, myKeymap->circumflex_dead_key[i])) {
+				*dead_key = XK_dead_circumflex;
+				key = myUTF_Map[myKeymap->circumflex_dead_key[i-1]+1];
+				printf("deadkey: %c\n", key);
+				goto gotone;
+			}
+		}
+
+		for (int i=1; i<32; i+=2) {
+			if (compare_to_utfmap(bytes, len, myKeymap->tilde_dead_key[i])) {
+				*dead_key = XK_dead_tilde;
+				key = myUTF_Map[myKeymap->tilde_dead_key[i-1]+1];
+				printf("deadkey: %c\n", key);
+				goto gotone;
+			}
+		}
+gotone:
+		if (*dead_key) {
+//			myConnection->SendKeyEvent(dead_key, true);
+			bytes[0] = key;
+		} else {
+
+//			int32 offset;
+//			offset = (((unsigned char)bytes[0]) << 8) & 0x0FF00 + (((unsigned char)bytes[1]) & 0x0FF);
+
+
+/*			if (myUTF_Map)
+				printf("UTF8 -> '%c'\n", myUTF_Map[offset]);
+			else puts("NO UTF MAP");
+*/
+			convert_from_utf8(B_ISO1_CONVERSION, bytes, &srclen, buff, &dstlen, &cookie, '\0');
+			printf("UTF8-> '%c'\n", buff[0]);
+			
+			switch (buff[0]) {
+			case 'ç':
+				*dead_key = XK_dead_cedila;
+				bytes[0] = 'c';
+				break;
+			case 'µ':
+				bytes[0] = XK_mu;
+				break;
+			case '§':
+				bytes[0] = XK_paragraph;
+				break;
+			case '£':
+				bytes[0] = XK_sterling;
+				break;
+			default:
+//				bytes[0] = buff[0];
+				break;
+			}
+		}
+	}
+/*	if ((len == 2) && ((unsigned char)bytes[0] == (unsigned char)0xC2)) {
+		if ((unsigned char)bytes[1] == (unsigned char)0x0b2) bytes[0] = 'Â²';
+		if ((unsigned char)bytes[1] == (unsigned char)0x0a7) bytes[0] = 'Â§';
+		if ((unsigned char)bytes[1] == (unsigned char)0x0a3) bytes[0] = 'Â£';
+		if ((unsigned char)bytes[1] == (unsigned char)0x0a4) bytes[0] = 'Â¤';
+		if ((unsigned char)bytes[1] == (unsigned char)0x0b5) bytes[0] = 'Âµ';
+
+		len = 1;
+	} else {
+		
+	}
+*/
+	byte = bytes[0];
+	
+#if 1
 	switch (byte)
 	{
 	case B_BACKSPACE:		printf( "Backspace\n" ); break;
@@ -495,11 +889,12 @@ ViewConnection::GetXKey( char byte )
 	case B_PAGE_UP:			printf( "Page_Up\n" ); break;
 	case B_PAGE_DOWN:		printf( "Page_Down\n" ); break;
 
-	case B_FUNCTION_KEY:
-	  {
+	case B_FUNCTION_KEY:	
+	{
 		int32 k;
 		Window()->CurrentMessage()->FindInt32( "key", (long*)&k );
-		switch (k)
+	
+			switch (k)
 		{
 		case B_F1_KEY:		printf( "F1\n" ); break;
 		case B_F2_KEY:		printf( "F2\n" ); break;
@@ -574,7 +969,15 @@ ViewConnection::GetXKey( char byte )
 		key = byte;
 		break;
 	}
+	printf("FINAL: '%c'", (char)key);
 	return key;
+//	myConnection->SendKeyEvent(key, true);
+	
+/*	if (dead_key) {
+		myConnection->SendKeyEvent(dead_key, false);
+		bytes[0] = key;
+	}
+*/
 }
 
 /****
@@ -582,8 +985,8 @@ ViewConnection::GetXKey( char byte )
 **	@param		byte	Be styled key value.
 **	@result		Demodified key value.
 */
-char
-ViewConnection::SendModifier( char byte )
+int
+ViewConnection::SendModifier( char *bytes, int len )
 {
 	uint32	mod		= modifiers();
 
@@ -602,17 +1005,34 @@ ViewConnection::SendModifier( char byte )
 	else if (!(mod & B_LEFT_OPTION_KEY) && (myOldModifiers & B_LEFT_OPTION_KEY))
 		myConnection->SendKeyEvent( XK_Alt_L, false );
 
-	if ((mod & B_RIGHT_OPTION_KEY) && !(myOldModifiers & B_RIGHT_OPTION_KEY))
+/*	if ((mod & B_RIGHT_OPTION_KEY) && !(myOldModifiers & B_RIGHT_OPTION_KEY))
 		myConnection->SendKeyEvent( XK_Alt_R, true );
 	else if (!(mod & B_RIGHT_OPTION_KEY) && (myOldModifiers & B_RIGHT_OPTION_KEY))
 		myConnection->SendKeyEvent( XK_Alt_R, false );
+*/
 
-	if (mod & B_CONTROL_KEY)
-		byte += 'a'-1;
+	if ((len == 1) && (mod & B_CONTROL_KEY))
+		bytes[0] += 'a'-1;
 
 	myOldModifiers = mod;
 
-	return byte;
+	return len;
+}
+
+void print_mods()
+{
+	uint32 mod;
+	
+	mod = modifiers();
+	printf("[%s %s %s %s %s %s %s %s]\n", 
+			(mod & B_LEFT_SHIFT_KEY)?"lS":"  ",
+			(mod & B_RIGHT_SHIFT_KEY)?"rS":"  ",
+			(mod & B_LEFT_CONTROL_KEY)?"lC":"  ",
+			(mod & B_RIGHT_CONTROL_KEY)?"rC":"  ",
+			(mod & B_LEFT_OPTION_KEY)?"lO":"  ",
+			(mod & B_RIGHT_OPTION_KEY)?"rO":"  ",
+			(mod & B_LEFT_COMMAND_KEY)?"lK":"  ",
+			(mod & B_RIGHT_COMMAND_KEY)?"rK":"  ");
 }
 
 /****
@@ -621,10 +1041,26 @@ ViewConnection::SendModifier( char byte )
 void
 ViewConnection::KeyDown( const char *bytes, int32 numBytes )
 {
-	if (numBytes == 1)
+	char data[10];
+printf("KeyDown(");
+for (int i=0; i<numBytes; i++)
+	printf("%02x '%c' ", (unsigned char)bytes[i], bytes[i]);
+printf(", %li) ", numBytes);
+print_mods();
+	if( App::GetApp()->GetOptions()->m_ViewOnly )
+		return;
+//	if (numBytes == 1)
 	{
-		char byte = SendModifier( bytes[0] );
-		myConnection->SendKeyEvent( GetXKey( byte ), true );
+		CARD32 dead_key, key;
+//		Window()->CurrentMessage()->PrintToStream();
+
+		memcpy(data, bytes, (numBytes>10)?(10):(numBytes));
+//		char byte = SendModifier( bytes[0] );
+//		myConnection->SendKeyEvent( GetXKey( data, SendModifier( data, (numBytes>10)?(10):(numBytes) ) ), true );
+		key = GetXKey( data, SendModifier( data, (numBytes>10)?(10):(numBytes) ), &dead_key );
+		if (dead_key)
+			myConnection->SendKeyEvent( dead_key, true );
+		myConnection->SendKeyEvent( key, true );
 		//printf( "KeyDown: %08lX, %02lX, '%c'\n", GetXKey( byte ), byte, byte );
 	}
 }
@@ -636,10 +1072,35 @@ ViewConnection::KeyDown( const char *bytes, int32 numBytes )
 void
 ViewConnection::KeyUp( const char *bytes, int32 numBytes )
 {
-	if (numBytes == 1)
+	uint32 mod;
+	char data[10];
+printf("KeyUp(");
+for (int i=0; i<numBytes; i++)
+	printf("%02x '%c' ", (unsigned char)bytes[i], bytes[i]);
+printf(", %li) ", numBytes);
+print_mods();
+	
+	mod = modifiers();
+	
+	if (numBytes == 1 && bytes[0] == B_ESCAPE && mod & B_CONTROL_KEY && mod & B_SHIFT_KEY) {
+		puts("FS");
+		Window()->PostMessage(WndConnection::msg_fullscreen);
+		return;
+	}
+	
+	if( App::GetApp()->GetOptions()->m_ViewOnly )
+		return;
+
+//	if (numBytes == 1)
 	{
-		char byte = SendModifier( bytes[0] );
-		myConnection->SendKeyEvent( GetXKey( byte ), false );
+		CARD32 dead_key, key;
+		memcpy(data, bytes, (numBytes>10)?(10):(numBytes));
+//		char byte = SendModifier( bytes, numBytes );
+//		myConnection->SendKeyEvent( GetXKey( data, SendModifier( data, (numBytes>10)?(10):(numBytes) ) ), false );
+		key = GetXKey( data, SendModifier( data, (numBytes>10)?(10):(numBytes) ), &dead_key );
+		myConnection->SendKeyEvent( key, false );
+		if (dead_key)
+			myConnection->SendKeyEvent( dead_key, false );
 	}
 }
 
@@ -652,8 +1113,9 @@ ViewConnection::SendMouse( BPoint point )
 {
 	uint32	buttons;
 	int		mask;
-
-	(void)SendModifier( 0 );
+	char dummy = 0;
+	
+	(void)SendModifier( &dummy, 1 );
 
 	Window()->CurrentMessage()->FindInt32( "buttons", (long*)&buttons ); 
 
@@ -672,12 +1134,23 @@ ViewConnection::SendMouse( BPoint point )
 	myConnection->SendPointerEvent( point.x + hScrollPos, point.y + vScrollPos, mask );
 }
 
+void ViewConnection::MouseUp( BPoint point )
+{
+	if( App::GetApp()->GetOptions()->m_ViewOnly )
+		return;
+
+	SendMouse( point );
+}
+
 /****
 **	@purpose	See BeBook: BView->MouseDown()
 */
 void
 ViewConnection::MouseDown( BPoint point )
 {
+	if( App::GetApp()->GetOptions()->m_ViewOnly )
+		return;
+
 #if defined(DEBUG_VERBOSE)
 	printf( "$Enter MouseDown\n" );
 #endif
@@ -689,7 +1162,7 @@ ViewConnection::MouseDown( BPoint point )
 	// not the elegant way for pasting, but it works
 	uint32	buttons;
 	Window()->CurrentMessage()->FindInt32( "buttons", (long*)&buttons ); 
-#if 0
+#if 1
 //$$$ why the hell doesn't this work? it messes with the whole server clipboard...
 	if (buttons & (App::GetApp()->IsSwapMouse() ? B_TERTIARY_MOUSE_BUTTON : B_SECONDARY_MOUSE_BUTTON))
 	{
@@ -701,7 +1174,11 @@ ViewConnection::MouseDown( BPoint point )
 				char*	text;
 				ssize_t	len;
 				clipper->FindData( "text/plain", (type_code)B_MIME_TYPE, (const void**)&text, &len );
-printf( "clipboard data: '%s'\n", text );
+//printf( "clipboard data: '%s'\n", text );
+printf( "clipboard data: '");
+for (int i=0; i<len; i++)
+	printf( "%c", text[i] );
+printf( "'\n");
 				myConnection->SendClientCutText( text, len );
 			}
 else
@@ -713,21 +1190,24 @@ printf( "can't lock clipboard\n" );
 	}
 #endif
 
-	while (buttons)
-	{
+//XXX: what's this mess ?
+    // Why is this needed?
+//	SendMouse( point );
+//	while (buttons)
+//	{
 		SendMouse( point );
 #if defined(DEBUG_VERBOSE)
 		printf( "$MouseDown: " );
 #endif
-		myConnection->DoRFBMessage();
-		GetMouse( &point, &buttons, true );
-	}
+//		myConnection->DoRFBMessage();
+//		GetMouse( &point, &buttons, true );
+//	}
 
-	myConnection->SendPointerEvent( point.x + hScrollPos, point.y + vScrollPos, 0 );
+//	myConnection->SendPointerEvent( point.x + hScrollPos, point.y + vScrollPos, 0 );
 #if defined(DEBUG_VERBOSE)
-	printf( "$Last MouseDown: " );
+	printf( "$Last MouseDown: \n" );
 #endif
-	myConnection->DoRFBMessage();
+//	myConnection->DoRFBMessage();
 
 	myConnection->Unlock();
 
@@ -742,6 +1222,9 @@ printf( "can't lock clipboard\n" );
 void
 ViewConnection::MouseMoved( BPoint point, uint32 transit, const BMessage* /*msg*/ )
 {
+	if( App::GetApp()->GetOptions()->m_ViewOnly )
+		return;
+
 #if defined(DEBUG_VERBOSE)
 	printf( "$Enter MouseMoved\n" );
 #endif
@@ -851,6 +1334,20 @@ ViewConnection::ScreenUpdate( void )
 			HextileRect( &surh );
 			break;
 
+		case rfbEncodingZlib:
+#if defined(DEBUG_VERBOSE)
+			printf( "$ScreenUpdate: rfbEncodingZlib\n" );
+#endif
+			ZlibRect( &surh );
+			break;
+			
+		case rfbEncodingTight:
+#if defined(DEBUG_VERBOSE)
+			printf( "$ScreenUpdate: rfbEncodingTight\n" );
+#endif
+			printf("Tight encoding\n"); // XXX: TODO
+			break;
+			
 		default:
 #if defined(DEBUG_VERBOSE)
 			printf( "$ScreenUpdate: UNKNOWN ENCODING %08lX!\n", surh.encoding );
@@ -1024,6 +1521,18 @@ ViewConnection::UpdateFormat( const rfbPixelFormat* format )
 
 #else
 
+#define SETPIXELSBUFFER( buf , bpp , x , y , w , h )				\
+	{																\
+		CARD##bpp *p = (CARD##bpp *) buf;							\
+		for (int k = y; k < y+h; k++) {								\
+			for (int j = x; j < x+w; j++) {							\
+					SETHIGHCOLOR_FROM_PIXEL##bpp##_ADDRESS(p);		\
+					SetPixel(j,k);									\
+					p++;											\
+			}														\
+		}															\
+	}
+		
 #define SETPIXELS(bpp, x, y, w, h)									\
 	{																\
 		CARD##bpp *p = (CARD##bpp *) myNetBuf;						\
@@ -1257,6 +1766,107 @@ ViewConnection::CoRRERect( rfbFramebufferUpdateRectHeader* pfburh )
 
 		p += subRectSize;
     }
+}
+
+/*
+**	ZLib Encoding.
+*/
+#include <zlib.h>
+
+void ViewConnection::ZlibRect(rfbFramebufferUpdateRectHeader *pfburh) 
+{
+	unsigned int numpixels = pfburh->r.w * pfburh->r.h;
+    // this assumes at least one byte per pixel. Naughty.
+	unsigned int numRawBytes = numpixels * minPixelBytes;
+	unsigned int numCompBytes;
+	unsigned int inflateResult;
+
+	rfbZlibHeader hdr;
+
+	// Read in the rfbZlibHeader
+	myConnection->GetSocket()->ReadExact((char *)&hdr, sz_rfbZlibHeader);
+
+	numCompBytes = Swap32IfLE(hdr.nBytes);
+
+	// Read in the compressed data
+    CheckBufferSize(numCompBytes);
+	myConnection->GetSocket()->ReadExact(myNetBuf, numCompBytes);
+
+	// Verify enough buffer space for screen update.
+	CheckZlibBufferSize(numRawBytes);
+
+	m_decompStream.next_in = (unsigned char *)myNetBuf;
+	m_decompStream.avail_in = numCompBytes;
+	m_decompStream.next_out = m_zlibbuf;
+	m_decompStream.avail_out = numRawBytes;
+	m_decompStream.data_type = Z_BINARY;
+		
+	// Insure the inflator is initialized
+	if ( m_decompStreamInited == false ) {
+		m_decompStream.total_in = 0;
+		m_decompStream.total_out = 0;
+		m_decompStream.zalloc = Z_NULL;
+		m_decompStream.zfree = Z_NULL;
+		m_decompStream.opaque = Z_NULL;
+
+		inflateResult = inflateInit( &m_decompStream );
+		if ( inflateResult != Z_OK ) {
+			fprintf( stderr, "%s: zlib inflate error: %d\n", App::GetApp()->GetName(), inflateResult );
+			return;
+		}
+		m_decompStreamInited = true;
+	}
+
+	// Decompress screen data
+	inflateResult = inflate( &m_decompStream, Z_SYNC_FLUSH );
+	if ( inflateResult < 0 ) {
+		fprintf( stderr, "%s: zlib inflate error: %d\n", App::GetApp()->GetName(), inflateResult );//log.Print(0, _T("zlib inflate error: %d\n"), inflateResult);
+		return;
+	}
+
+	switch (myBitsPerPixel) 
+	{
+	case 8:
+		SETPIXELSBUFFER( m_zlibbuf, 8, pfburh->r.x, pfburh->r.y, pfburh->r.w, pfburh->r.h)
+			break;
+	case 16:
+		SETPIXELSBUFFER( m_zlibbuf, 16, pfburh->r.x, pfburh->r.y, pfburh->r.w, pfburh->r.h)
+			break;
+	case 24:
+	case 32:
+		SETPIXELSBUFFER( m_zlibbuf, 32, pfburh->r.x, pfburh->r.y, pfburh->r.w, pfburh->r.h)            
+			break;
+	default:
+		fprintf( stderr, "%s: Invalid number of bits per pixel: %d\n", App::GetApp()->GetName(), myBitsPerPixel );
+		return;
+	}
+}
+
+// Makes sure zlibbuf is at least as big as the specified size.
+// Note that zlibbuf itself may change as a result of this call.
+// Throws an exception on failure.
+void ViewConnection::CheckZlibBufferSize(int bufsize)
+{
+	unsigned char *newbuf;
+
+	if (m_zlibbufsize > bufsize) return;
+
+
+	newbuf = (unsigned char *)new char[bufsize+256];
+	if (newbuf == NULL) 
+	{
+		fprintf( stderr, "Insufficient memory to allocate zlib buffer.");
+		return;
+	}
+
+	// Only if we're successful...
+
+	if (m_zlibbuf != NULL)
+		delete [] m_zlibbuf;
+	m_zlibbuf = newbuf;
+	m_zlibbufsize=bufsize + 256;
+//	log.Print(4, _T("zlibbufsize expanded to %d\n"), m_zlibbufsize);
+
 }
 
 /*

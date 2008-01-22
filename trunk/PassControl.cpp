@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <Font.h>
+#include <MessageFilter.h>
 
 #include "PassControl.h"
 

@@ -26,10 +26,17 @@
 **
 */
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 #include <Beep.h>
+#include <Screen.h>
+#include <View.h>
 
 #include "Connection.h"
 #include "vncauth.h"
+
+#include "Utility.h"
+#include "AuthDialog.h"
 
 //#define	TIME_SCREENUPDATE
 
@@ -53,7 +60,8 @@ Connection::Connection( void )
 	: myDesktopName(NULL),
 	  myIsConnected(false),
 	  myPendingFormatChange(false),
-	  myInsideHandler(false)
+	  myInsideHandler(false),
+	  myAutoUpdate(true)
 {
 }
 
@@ -121,9 +129,22 @@ Connection::Connect( const char* hostname, int port, char* passwd )
 			mySocket.Close();
 		}
 	}
-	else
+	else {
 		mySocket.Close();
+	}
 	return result;
+}
+
+/****
+**	@purpose	Establish a connection to a VNC server, without pass.
+**	@param		hostname	Name of the host to connect to.
+**	@param		port		Number of the port to connect.
+**	result		<true> if connection successful established, <false> otherwise.
+*/
+bool
+Connection::Connect( const char* hostname, int port )
+{
+	return Connect(hostname, port, NULL);
 }
 
 /****
@@ -142,6 +163,8 @@ Connection::Init( char* passwd )
 	int		major, minor;
 	int		i;
 	bool	authWillWork = true;
+	BMessage archive;
+	char dpasswd[8];
 
 	/*
 	**	if the connection is immediately closed, don't report anything, 
@@ -231,18 +254,51 @@ Connection::Init( char* passwd )
 		if (!mySocket.ReadExact( (char*)challenge, CHALLENGESIZE ))
 			return false;
 
-		if (strlen( passwd ) == 0)
-		{
-			App::Alert( "No password given" );
-			return false;
+		if (passwd) {
+			if (strlen( passwd ) == 0)
+			{
+				App::Alert( "No password given" );
+				return false;
+			}
+		} else if( RehydrateWindow( "PasswordDialog" , &archive ) ) {
+			AuthenticationDialog* ad = new AuthenticationDialog(&archive);
+			{
+				BRect rect;
+				BScreen mainScreen;
+				BRect rectScreen = mainScreen.Frame();
+				
+				int width = (int)ad->Frame().Width();
+				int height = (int)ad->Frame().Height();
+		
+				// center window
+ 				rect.SetLeftTop( BPoint( (rectScreen.Width() - width) / 2, (rectScreen.Height() - height) / 2 ) );
+ 				rect.SetRightBottom( BPoint( rect.left + width, rect.top + height ) );
+				ad->MoveTo( rect.left , rect.top );
+			}
+			
+				if( !ad->DoModal() )
+					return false; // need to return false.
+			
+			passwd = dpasswd; // use the local buffer since the arg is NULL;
+			strncpy(passwd, ad->GetPassText(), 8); // don't want to get crashed by long passwords
+	
+			if (strlen(passwd) == 0) 
+			{
+				App::Alert( "Password had zero length\n");
+				return false;//throw WarningException("Empty password");
+			}
+						
+			ad->Lock();
+			ad->Quit();
 		}
+
 
 		if (strlen( passwd ) > 8)
 			passwd[8] = '\0';
 
 		vncEncryptBytes( (u8*)challenge, passwd );
 
-		// lose the password from memory
+		// lose the password from memory // XXX: do we want this ?
 		for (i = 0 ; i < strlen( passwd ) ; i++)
 			passwd[i] = '\0';
 
@@ -474,6 +530,7 @@ Connection::SetFormatAndEncodings( void )
 
 	SetPixelFormat( &myFormat );
 
+#if 0
 	// set encodings
 	se->type		= rfbSetEncodings;
 	se->nEncodings	= 0;
@@ -504,7 +561,57 @@ Connection::SetFormatAndEncodings( void )
 		return false;
 
 	return true;
+#endif
+    	// Put the preferred encoding first, and change it if the
+	// preferred encoding is not actually usable.
+
+	VNCOptions* m_opts = ((App *)be_app)->GetOptions();
+	
+ 	se->type = rfbSetEncodings;
+    se->nEncodings = 0;
+   
+   	for ( i = LASTENCODING; i >= rfbEncodingRaw; i--)
+	{
+		if (m_opts->m_PreferredEncoding == i) {
+			if (m_opts->m_UseEnc[i]) {
+				encs[se->nEncodings++] = Swap32IfLE(i);
+			} else {
+				m_opts->m_PreferredEncoding--;
+			}
+		}
+	}
+
+	// Now we go through and put in all the other encodings in order.
+	// We do rather assume that the most recent encoding is the most
+	// desirable!
+	for (i = LASTENCODING; i >= rfbEncodingRaw; i--)
+	{
+		if ( (m_opts->m_PreferredEncoding != i) &&
+			 (m_opts->m_UseEnc[i]))
+		{
+			encs[se->nEncodings++] = Swap32IfLE(i);
+		}
+	}
+
+    len = sz_rfbSetEncodingsMsg + se->nEncodings * 4;
+	
+    se->nEncodings = Swap16IfLE(se->nEncodings);
+	
+    mySocket.WriteExact((char *) buf, len);
+    	
+	return true;
 }
+
+// mmu
+bool Connection::SetAutoUpdate(bool yes)
+{
+	if (myAutoUpdate == false && yes == true) {
+		myAutoUpdate = yes;
+		SendIncrementalFramebufferUpdateRequest();
+	}
+	myAutoUpdate = yes;
+}
+
 
 /****
 **	@purpose	Send pointer event to the RFB server.
@@ -615,7 +722,8 @@ Connection::MessageReceived( BMessage* msg )
 		{
 			PostMessage( msg_getnextrfbmessage );
 			myWindow->Unlock();
-			snooze( 20 * 1000 );
+//			snooze( 20 * 1000 );
+			snooze(myWindow->myUpdateDelay);
 #if defined(DEBUG_VERBOSE)
 			printf( "$Exit MessageReceived true\n" );
 #endif
@@ -698,7 +806,7 @@ Connection::DoRFBMessage( void )
 				else
 					SendIncrementalFramebufferUpdateRequest();
 			}
-			else
+			else if (myAutoUpdate) // XXX: mmu
 				SendIncrementalFramebufferUpdateRequest();
 #endif
 			break;
@@ -713,6 +821,11 @@ Connection::DoRFBMessage( void )
 		  {
 			rfbBellMsg bm;
 			mySocket.ReadExact( (char*)&bm, sz_rfbBellMsg );
+			if( App::GetApp()->GetOptions()->m_DeiconifyOnBell )
+			{
+				if( App::GetApp()->WindowAt(0)->IsMinimized() )//myWindow->IsMinimized() )
+					 App::GetApp()->WindowAt(0)->Show();
+			}
 			beep();
 			break;
 		  }

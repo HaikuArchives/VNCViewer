@@ -1,13 +1,14 @@
 /*
 **
-**	$Id: WndLogin.cpp,v 1.4 1998/10/25 16:05:53 bobak Exp $
-**	$Revision: 1.4 $
+**	$Id: WndLogin.cpp,v 1.2 1998/04/19 15:27:58 bobak Exp bobak $
+**	$Revision: 1.2 $
 **	$Filename: WndLogin.cpp $
-**	$Date: 1998/10/25 16:05:53 $
+**	$Date: 1998/04/19 15:27:58 $
 **
 **	Author: Andreas F. Bobak (bobak@abstrakt.ch)
+**  Modified by: Christopher J. Plymire (chrisjp@eudoramail.com)
 **
-**	Copyright (C) 1998 by Abstrakt Design, Andreas F. Bobak.
+**	Copyright (C) 1998 by Abstrakt SEC, Andreas F. Bobak.
 **
 **	This is free software; you can redistribute it and / or modify it 
 **	under the terms of the GNU General Public License as published by
@@ -25,11 +26,21 @@
 **	USA.
 **
 */
-#include <assert.h>
-#include <Box.h>
-#include <Button.h>
-#include <Screen.h>
+#include <Message.h>
+#include <Application.h>
+#include <Message.h>
+#include <stdio.h>
+#include <MessageFilter.h>
+#include <InterfaceKit.h>
+// XXX: check
+//#include <Box.h>
+//#include <Button.h>
+//#include <Screen.h>
 
+#include <assert.h>
+
+#include "OptionsDialog.h"
+#include "Utility.h"
 #include "App.h"
 #include "WndLogin.h"
 
@@ -53,6 +64,7 @@ const float WndLogin::height	= 105;			// window height
 WndLogin::WndLogin( BRect frame )
 	: BWindow(frame, title, B_TITLED_WINDOW, B_NOT_RESIZABLE | B_NOT_ZOOMABLE)
 {
+#if 0 // Use BMessage constructor
 	/*
 	**	create user interface elements
 	*/
@@ -86,6 +98,35 @@ WndLogin::WndLogin( BRect frame )
 	
 	// 'open' window
 	Show();
+	#endif
+}
+
+/*
+**	@purpose	Constructs a new WndLogin instance.
+**	@param		frame	Rectangle defining the initial size of the window.
+*/
+
+WndLogin::WndLogin( BMessage* archive )
+	: BWindow(archive)
+{
+	// Set the focus to our "hostname" box
+	BView* textBox = FindView("serverText");
+	if( textBox )
+		textBox->MakeFocus(true);
+
+	BRect	rectScreen = BScreen( B_MAIN_SCREEN_ID ).Frame();
+ 	BRect	rect;
+ 	
+ 	int width = (int)Frame().Width();
+	int height = (int)Frame().Height();
+	
+	// center window
+ 	rect.SetLeftTop( BPoint( (rectScreen.Width() - width) / 2, (rectScreen.Height() - height) / 2 ) );
+ 	rect.SetRightBottom( BPoint( rect.left + width, rect.top + height ) );
+	MoveTo( rect.left , rect.top );
+
+	// 'open' window
+	Show();	
 }
 
 /****
@@ -93,7 +134,10 @@ WndLogin::WndLogin( BRect frame )
 */
 WndLogin::~WndLogin( void )
 {
+//	printf( "***destruct WndLogin\n" );
 }
+
+#define HOST_SELECT_MESSAGE 'hsel'
 
 /****
 **	@purpose	Creates and shows a WndLogin window.
@@ -105,9 +149,45 @@ WndLogin::Create( void )
 	BRect	rectScreen = BScreen( B_MAIN_SCREEN_ID ).Frame();
  	BRect	rect;
 
+
+	BMessage archive;
+	if( RehydrateWindow("ConnectionWindow" , &archive) )
+	{
+		WndLogin* pLogin = new WndLogin( &archive );
+		if( pLogin )
+		{
+			pLogin->Lock();
+			
+			// Load our 'mru' items.
+			int nIndex = 0;
+			const char* ConnectionItem;
+			BMenuField* pField = (BMenuField *)pLogin->FindView("hostList");
+			
+			while( (ConnectionItem = App::GetApp()->GetOptions()->GetConnectionItem(nIndex) ) )
+			{
+				BMessage* connectMessage = new BMessage(HOST_SELECT_MESSAGE);
+				connectMessage->AddString("host" , ConnectionItem );
+				
+				BMenuItem* newItem = new BMenuItem( ConnectionItem , connectMessage );
+				pField->Menu()->AddItem ( newItem );
+				nIndex++;
+			}
+			
+			if( nIndex > 0 )
+			{					
+				BTextControl *serverText = (BTextControl *)pLogin->FindView("serverText");
+				serverText->SetText(pField->Menu()->ItemAt( pField->Menu()->CountItems() - 1)->Label() );
+				serverText->TextView()->SelectAll();
+			}
+			
+			pLogin->Unlock();
+			return pLogin;
+		}
+	}
+	
 	// center window
- 	rect.SetLeftTop( BPoint( (rectScreen.Width() - width) / 2, (rectScreen.Height() - height) / 2 ) );
- 	rect.SetRightBottom( BPoint( rect.left + width, rect.top + height ) );
+// 	rect.SetLeftTop( BPoint( (rectScreen.Width() - width) / 2, (rectScreen.Height() - height) / 2 ) );
+// 	rect.SetRightBottom( BPoint( rect.left + width, rect.top + height ) );
 
 	return new WndLogin( rect );
 }
@@ -174,6 +254,12 @@ WndLogin::AddButton( BView* parent, BRect& rect, char* id, char* label, msg mesg
 	return btn;
 }
 
+bool WndLogin::QuitRequested()
+{
+	be_app->PostMessage(B_QUIT_REQUESTED);
+	return true;
+}
+
 /****
 **	@purpose	See the BeBook.
 **	@param		msg		A pointer to the received message.
@@ -185,25 +271,54 @@ WndLogin::MessageReceived( BMessage* msg )
 
 	switch (msg->what)
 	{
-	case msg_ok:
-	{
-		BMessage* msg = new BMessage(App::msg_connect);
+		case HOST_SELECT_MESSAGE:
+		{
+			BMenuItem* pItem;
+			if( msg->FindPointer("source" , (void **)&pItem) != B_OK)
+				return; 
+				
+				BTextControl *serverText = (BTextControl *)FindView("serverText");
+				serverText->SetText(pItem->Label() );
+				serverText->TextView()->SelectAll();
+				
+				break;
+		}
+		
+		case msg_ok:
+		{
+			BMessage* msg = new BMessage(App::msg_connect);
 
-		tv = (BTextView *)myTxtCtrlHostname->ChildAt( 0 );
+			tv = (BTextView *)FindView("serverText")->ChildAt( 0 );
 
-		msg->AddString( "hostname", tv->Text() );
-		msg->AddString( "password", myPassCtrlPassword->actualText() );
+			msg->AddString( "hostname", tv->Text() );	
+//		msg->AddString( "password", myPassCtrlPassword->actualText() );
+	
+			be_app->PostMessage( msg, NULL );
+			Quit();
+			break;
+		}
+	
+		case msg_options:
+		{
+			BMessage archive;
+			if( RehydrateWindow( "OptionsWindow" , &archive) )
+			{
+				App* pApp = (App *)be_app;
+					
+				OptionsDialog* pWindow = new OptionsDialog(&archive , pApp->GetOptions());
+				pWindow->Show();
+			}
+		}
+		
 
-		be_app->PostMessage( msg, NULL );
-		Quit();
-		break;
-	}
-
+#if 0
 	case msg_cancel:
 		be_app->PostMessage( B_QUIT_REQUESTED );
 		Quit();
 		break;
+#endif
 
+#if 0
 	case msg_hostname:
 	case msg_passwd:
 	{
@@ -225,6 +340,7 @@ WndLogin::MessageReceived( BMessage* msg )
 
 		break;
 	}
+#endif
 
 	default:
 		BWindow::MessageReceived( msg );

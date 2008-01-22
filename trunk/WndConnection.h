@@ -29,6 +29,12 @@
 */
 #include <assert.h>
 #include <Window.h>
+#include <View.h>
+
+#include <DirectWindow.h>
+#include <InterfaceDefs.h>
+#include <Screen.h>
+#include <zlib.h>
 
 #include "App.h"
 #include "Connection.h"
@@ -58,6 +64,10 @@ public:
 	{
 		msg_command			= B_SPECIFIERS_END,		// command keys go here
 		msg_command_last	= msg_command + 'Z',	// last valid command key
+		msg_fullscreen,
+		msg_save_cnx,
+		msg_view_cnx_infos,
+		msg_update_delay,
 		msg_invalid									// no valid messages
 	};
 
@@ -68,6 +78,9 @@ public:
 	static WndConnection* Create( Connection* conn );
 	void ScreenUpdate( void );
 	void ServerCutText( void );
+	bool IsFullScreen(void) const { return myIsFullScreen; };
+	void SetFullScreen(bool);
+	void Minimize(bool yes);
 
 	bool MessageReceived( BMessage* msg );
 	void QuitSafe( void );
@@ -94,6 +107,55 @@ public:
 
 protected:
 
+	class MyDirectWindow : public BDirectWindow
+	{
+	public:
+		MyDirectWindow( WndConnection* parent, BRect frame, const char *title, window_type type, uint32 flags )
+			: BDirectWindow( frame, title, type, flags ),
+			  myParent(parent)
+		{
+			assert( parent != NULL );
+		}
+
+		void MessageReceived( BMessage* msg )
+		{
+			if (!myParent->MessageReceived( msg ))
+				BDirectWindow::MessageReceived( msg );
+		}
+
+		virtual bool QuitRequested( void )
+		{
+			be_app->PostMessage( App::msg_window_closed );
+			return false;
+		}
+
+		virtual void Zoom(BPoint origin, float width, float height)
+		{
+			PostMessage(msg_fullscreen);
+		}
+		
+		virtual void Minimize(bool yes)
+		{
+			myParent->Minimize(yes);
+			BDirectWindow::Minimize(yes);
+		}
+/*
+		virtual void Hide(void)
+		{
+			myParent->Minimize(true);
+			BWindow::Hide();
+		}
+
+		virtual void Show(void)
+		{
+			myParent->Minimize(false);
+			BWindow::Show();
+		}
+*/
+	private:
+		WndConnection*	myParent;
+	};
+	
 	class MyWindow : public BWindow
 	{
 	public:
@@ -116,6 +178,29 @@ protected:
 			return false;
 		}
 
+		virtual void Zoom(BPoint origin, float width, float height)
+		{
+			PostMessage(msg_fullscreen);
+		}
+
+		virtual void Minimize(bool yes)
+		{
+			myParent->Minimize(yes);
+			BWindow::Minimize(yes);
+		}
+
+/*		virtual void Hide(void)
+		{
+			myParent->Minimize(true);
+			BWindow::Hide();
+		}
+
+		virtual void Show(void)
+		{
+			myParent->Minimize(false);
+			BWindow::Show();
+		}
+*/
 	private:
 		WndConnection*	myParent;
 	};
@@ -135,12 +220,22 @@ protected:
 	};
 #endif
 
+
+public:
+	time_t			myUpdateDelay;
+
 private:
 
-	// member objects
+	// @members
 	Connection*		myConnection;
 	BWindow*		myWindow;
+	BMenuBar		*myMenuBar;
 	ViewConnection*	myView;
+	bool			myIsFullScreen;
+	bool			myIsMinimized;
+	bool			myStartFullScreen;
+	bool			myFullScreenAlertShown;
+	BRect			myDesktopRect;
 };
 
 /****
@@ -152,11 +247,13 @@ public:
 
 	// @constructors
 	ViewConnection( BRect frame, const char* name, Connection* conn );
+	virtual ~ViewConnection(void);
 
 	// @methods{Handlers}
 	virtual void KeyDown( const char *bytes, int32 numBytes );
 	virtual void KeyUp( const char *bytes, int32 numBytes );
 	virtual void MouseDown( BPoint point );
+	virtual void MouseUp( BPoint point );
 	virtual void MouseMoved( BPoint point, uint32 transit, const BMessage *message );
 	virtual void Draw( BRect updateRect );
 
@@ -165,13 +262,15 @@ public:
 
 	void UpdateFormat( const rfbPixelFormat* format );
 
+	// Original mode before a full screen switch	
+	display_mode oldMode;
 protected:
 
 	// @methods{Helpers}
 	void Init( BRect rect );
 	void CheckBufferSize( int bufsize );
-	CARD32 GetXKey( char byte );
-	char SendModifier( char byte );
+	CARD32 GetXKey( char *bytes, int len, CARD32 *dead_key );
+	int SendModifier( char *bytes, int len );
 	void SendMouse( BPoint point );
 
 	// @methods{Encodings}
@@ -179,6 +278,8 @@ protected:
 	void CopyRect(rfbFramebufferUpdateRectHeader *pfburh);
 	void RRERect(rfbFramebufferUpdateRectHeader *pfburh);
 	void CoRRERect(rfbFramebufferUpdateRectHeader *pfburh);
+	void ZlibRect(rfbFramebufferUpdateRectHeader *pfburh);
+	
 	void HextileRect(rfbFramebufferUpdateRectHeader *pfburh);
 	void HandleHextileEncoding8(int x, int y, int w, int h);
 	void HandleHextileEncoding16(int x, int y, int w, int h);
@@ -203,6 +304,41 @@ private:
     // The number of bytes required to hold at least one pixel.
 	uint	minPixelBytes;
 	CARD8	myBitsPerPixel;
+
+	// ZLIB compression and TIGHT compression Stuff
+	
+	// Buffer for zlib decompression.
+	void CheckZlibBufferSize(int bufsize);
+	unsigned char *m_zlibbuf;
+	int m_zlibbufsize;
+
+	// zlib decompression state
+	bool m_decompStreamInited;
+	z_stream m_decompStream;
+
+	// Valiables used by tight encoding:
+
+	// Separate buffer for tight-compressed data.
+	// char m_tightbuf[TIGHT_ZLIB_BUFFER_SIZE];
+
+	// Four independent compression streams for zlib library.
+	z_stream m_tightZlibStream[4];
+	bool m_tightZlibStreamActive[4];
+
+#if 0
+	// Tight filter stuff. Should be initialized by filter initialization code.
+	tightFilterFunc m_tightCurrentFilter;
+	bool m_tightCutZeros;
+	int m_tightRectWidth, m_tightRectColors;
+	COLORREF m_tightPalette[256];
+	CARD8 m_tightPrevRow[2048*3*sizeof(CARD16)];
+#endif
+
+	bool	compare_to_utfmap(char *bytes, int len, int32 index);
+
+	key_map 		*myKeymap;
+	char			*myUTF_Map;
+
 };
 
 #endif

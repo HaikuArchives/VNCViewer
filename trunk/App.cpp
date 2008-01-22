@@ -1,13 +1,15 @@
 /*
 **
-**	$Id: App.cpp,v 1.4 1998/10/25 16:05:52 bobak Exp $
-**	$Revision: 1.4 $
+**	$Id: App.cpp,v 1.2 1998/04/19 14:46:44 bobak Exp $
+**	$Revision: 1.2 $
 **	$Filename: App.cpp $
-**	$Date: 1998/10/25 16:05:52 $
+**	$Date: 1998/04/19 14:46:44 $
 **
-**	Author: Andreas F. Bobak (bobak@abstrakt.ch)
 **
-**	Copyright (C) 1998 by Abstrakt Design, Andreas F. Bobak.
+**	Original Author: Andreas F. Bobak (bobak@abstrakt.ch)
+**  Modified by: Christopher J. Plymire (chrisjp@eudoramail.com)
+**
+**	Copyright (C) 1998 by Abstrakt SEC, Andreas F. Bobak.
 **
 **	This is free software; you can redistribute it and / or modify it 
 **	under the terms of the GNU General Public License as published by
@@ -25,21 +27,26 @@
 **	USA.
 **
 */
-#include <string.h>
-#include <Alert.h>
+
+#include <MessageFilter.h>
+#include <Application.h>
+#include <FindDirectory.h>
+#include <InterfaceKit.h>
+#include <Path.h>
+#include <stdio.h>
+#include <memory.h>
 
 #include "App.h"
 #include "Connection.h"
 #include "WndLogin.h"
 
+// C-A-D stuff
 #include "keysymdef.h"
-
-#define FLASHPORT  (5400)    /* Offset to listen for `flash' commands */
-#define CLIENTPORT (5500)    /* Offset to listen for reverse connections */
-#define SERVERPORT (5900)    /* Offset to server for regular connections */
 
 // this is to get the application to run
 int main( void ) { App app; app.Run(); return 0; }
+
+#define PREFS_FILE "vnc.viewersettings"
 
 /*****************************************************************************
 **	App
@@ -57,12 +64,24 @@ App::App( void )
 	  myAddCoRRE(false),
 	  myAddRRE(false),
 	  myIsBatchMode(false),
+//	  myIsLittleEndian(true),
 	  myIsListenSpecified(false),
 	  myIsShareDesktop(false),
 	  myIsUse8bit(false),
-	  myIsSwapMouse(true),
 	  myExplicitEnc(0)
 {
+	BPath path;
+	
+	// Load our settings from the file if possible.
+	status_t status = find_directory(B_USER_SETTINGS_DIRECTORY, &path);
+	if (status != B_OK) {
+		return;
+	}
+	
+	path.Append(PREFS_FILE);
+	m_opts.Load( (char *)path.Path() );
+	
+
 	memset( myExplicitEncodings, 0, sizeof(myExplicitEncodings) );
 	WndLogin::Create();
 }
@@ -97,17 +116,23 @@ void
 App::AboutRequested( void )
 {
 	char about_text[] =
-	"VNCviewer for BeOS\nVersion 3.3.1, Release 5\n\n"
+	"VNCviewer for BeOS\nVersion 3.3.1, Release 6\n\n"
 	"VNC is Copyright (C) by Olivetti & Oracle Research Laboratory.\n"
-	"VNCviewer for BeOS is Copyright (C) by Abstrakt Design, Andreas F. Bobak.\n\n"
+	"VNCviewer for BeOS is Copyright (C) by Abstrakt Design, Andreas F. Bobak,\n"
+	"Christopher J. Plymire (chrisjp@eudoramail.com),\n"
+	"François Revol (revol@free.fr).\n\n"//XXX: add
 	"This software is distributed under the GNU General Public Licence as "
-	"published by the Free Software Foundation.\n\n"
-	"http://www.abstrakt.ch/be/";
+	"published by the Free Software Foundation.\n\n";
+//	"http://www.abstrakt.ch/be/";
 
 	BAlert* alert = new BAlert( App::GetApp()->GetName(), about_text, "OK" );
 	App::GetApp()->ShowCursor();
 	alert->Go();
 }
+
+
+
+bool ParseDisplay(char* display, char* phost, int hostlen, int *pport) ;
 
 /****
 **	@purpose	See the BeBook.
@@ -120,20 +145,29 @@ App::MessageReceived( BMessage* msg )
 	{
 	case msg_connect:
 	  {
-		char	*host, *passwd;
+		char	*host;// *passwd;
 		char	hostname[256];
 		int		port;
 
-		msg->FindString( "hostname", (const char**)&host );
-		msg->FindString( "password", (const char**)&passwd );
+		msg->FindString( "hostname", (const char **)&host );
+//		msg->FindString( "password", (const char **)&passwd );
 
-		if (sscanf( host, "%[^:]:%d", hostname, &port ) == 2)
+		if (ParseDisplay( host , hostname , 256 , &port ) )
 		{
-			if (port < 100)
-				port += SERVERPORT;
-
+			BPath path;
+	
+			// Save our settings to the file if possible.
+			status_t status = find_directory(B_USER_SETTINGS_DIRECTORY, &path);
+			if (status != B_OK) {
+				return;
+			}
+	
+			path.Append(PREFS_FILE);
+			m_opts.AddConnectionItem( host );
+			m_opts.Save( (char *)path.Path() );
+	
 			myConnection = new Connection();
-			if (myConnection->Connect( hostname, port, passwd ))
+			if (myConnection->Connect( hostname, port ))
 			{
 				// OK
 			}
@@ -171,6 +205,11 @@ App::MessageReceived( BMessage* msg )
 			myConnection->SendKeyEvent( XK_Delete, false );
 			myConnection->SendKeyEvent( XK_Alt_L, false );
 			myConnection->SendKeyEvent( XK_Control_L, false );
+			
+			// XK_Terminate_Server
+//			myConnection->SendKeyEvent( 0x0FED5, true );
+//			myConnection->SendKeyEvent( 0x0FED5, false );
+			
 		}
 		break;
 

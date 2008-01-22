@@ -36,7 +36,9 @@ protected:
 
 	// @constructors
 	WndLogin( BRect frame );
+	WndLogin( BMessage* archive );
 
+	bool QuitRequested();
 public:
 
 	// @destructor
@@ -49,7 +51,8 @@ protected:
 
 	enum msg	// message types for this window
 	{
-		msg_ok	= B_SPECIFIERS_END,		// 'OK' button pressed
+		msg_ok	= 'okay',		// 'OK' button pressed
+		msg_options = 'opti',
 		msg_cancel,						// 'Cancel' button pressed
 		msg_hostname,					// 'Hostname:' text changed
 		msg_passwd,						// 'Password:' text changed

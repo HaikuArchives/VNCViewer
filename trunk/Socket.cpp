@@ -28,9 +28,22 @@
 */
 #include <assert.h>
 #include <unistd.h>
-#include <net/netdb.h>
-#include <net/socket.h>
+
+// check for BONE_VERSION
+#include <sys/socket.h>
+
+#ifndef BONE_VERSION
+# include <net/netdb.h>
+//# include <net/socket.h>
+#else
+# include <netdb.h>
+//# include <sys/socket.h>
+# include <arpa/inet.h>
+# define closesocket close
+#endif
+
 #include <errno.h>
+#include <stdio.h>
 
 #include "App.h"
 #include "Socket.h"

@@ -70,6 +70,7 @@ public:
 
 	// @methods{Member Methods}
 	bool Connect( const char* hostname, int port, char* passwd );
+	bool Connect( const char* hostname, int port); // XXX:
 
 	color_space SetupPixelFormat( void );
 	bool SetFormatAndEncodings( void );
@@ -80,12 +81,16 @@ public:
 
 	bool DoRFBMessage( void );
 
+	bool SetAutoUpdate(bool yes);
+
+
 	// @methods{Selectors}
 	const char* GetDesktopName( void ) const			{ return myDesktopName; }
 	Socket* GetSocket( void )							{ return &mySocket; }
 	bool IsConnected( void ) const						{ return myIsConnected; }
 	const rfbPixelFormat* GetFormat( void ) const		{ return &myFormat; }
 	const rfbServerInitMsg* GetServerInit( void ) const { return &myServerInit; }
+	const bool IsAutoUpdate(void) const					{ return myAutoUpdate; }
 
 protected:
 
@@ -95,6 +100,7 @@ protected:
 
 	// @methods{Helpers}
 	bool Init( char* passwd );
+	bool Init( ); // XXX:
 	static void PrintPixelFormat( rfbPixelFormat* format );
 	void SetPixelFormat( const rfbPixelFormat* format );
 	void SendFramebufferUpdateRequest( int x, int y, int w, int h, bool incremental );
@@ -130,5 +136,6 @@ private:
 	bool		myIsConnected;				// <true> = connection succ. established
 	bool		myPendingFormatChange;
 	bool 		myInsideHandler;
+	bool		myAutoUpdate;
 };
 #endif

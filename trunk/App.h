@@ -2,14 +2,16 @@
 #define APP_H
 /*
 **
-**	$Id: App.h,v 1.3 1998/10/25 16:05:52 bobak Exp $
-**	$Revision: 1.3 $
-**	$Filename: App.h $
-**	$Date: 1998/10/25 16:05:52 $
+**	$Id: App.cpp,v 1.2 1998/04/19 14:46:44 bobak Exp $
+**	$Revision: 1.2 $
+**	$Filename: App.cpp $
+**	$Date: 1998/04/19 14:46:44 $
 **
-**	Author: Andreas F. Bobak (bobak@abstrakt.ch)
 **
-**	Copyright (C) 1998 by Abstrakt Design, Andreas F. Bobak.
+**	Original Author: Andreas F. Bobak (bobak@abstrakt.ch)
+**  Modified by: Christopher J. Plymire (chrisjp@eudoramail.com)
+**
+**	Copyright (C) 1998 by Abstrakt SEC, Andreas F. Bobak.
 **
 **	This is free software; you can redistribute it and / or modify it 
 **	under the terms of the GNU General Public License as published by
@@ -28,9 +30,15 @@
 **
 */
 #include <Application.h>
+#include <Message.h>
+
+#include "VNCOptions.h"
 #include "rfbproto.h"
 
 #define MAX_ENCODINGS		10
+#define FLASHPORT  (5400)    /* Offset to listen for `flash' commands */
+#define CLIENTPORT (5500)    /* Offset to listen for reverse connections */
+#define SERVERPORT (5900)    /* Offset to server for regular connections */
 
 class Connection;	// forward definition
 
@@ -52,32 +60,35 @@ public:
 	// @destructor
 	~App( void );
 
-	// @methods{Selector}
+	// @methods(Selector)
 	static App* GetApp( void )				{ return (App*)be_app; }
 	const char* GetName( void ) const 		{ return (const char*)myAppName; }
 	int GetExplicitEnc( void ) const		{ return myExplicitEnc; }
 	CARD32* GetEncodings( void )			{ return myExplicitEncodings; }
 
+	VNCOptions* GetOptions( void )			{return &m_opts; }
+	
 	bool AddCopyRect( void ) const			{ return myAddCopyRect; }
 	bool AddHextile( void ) const			{ return myAddHextile; }
 	bool AddCoRRE( void ) const				{ return myAddCoRRE; }
 	bool AddRRE( void ) const				{ return myAddRRE; }
 	bool IsBatchMode( void ) const			{ return myIsBatchMode; }
+//XXX:useless	bool IsLittleEndian( void ) const		{ return myIsLittleEndian; }
 	bool IsListenSpecified( void ) const	{ return myIsListenSpecified; }
-	bool IsShareDesktop( void ) const		{ return myIsShareDesktop; }
-	bool IsSwapMouse( void ) const			{ return myIsSwapMouse; }
-	bool IsUse8bit( void ) const			{ return myIsUse8bit; }
+	bool IsShareDesktop( void ) const		{ return m_opts.m_Shared;}//myIsShareDesktop; }
+	bool IsSwapMouse( void ) const			{ return m_opts.m_SwapMouse; }
+	bool IsUse8bit( void ) const			{ return m_opts.m_Use8Bit;}//return myIsUse8bit; }
 
-	// @methods{Member Functions}
+	// @methods(Member Functions)
 	static void Alert( const char* body, const char* arg = NULL );
 
-	// @methods{Handlers)
+	// @methods(Handlers)
 	virtual void AboutRequested( void );
 	virtual void MessageReceived( BMessage* msg );
 
 private:
 
-	// member objects
+	// @members
 	const char*	myAppName;
 	Connection*	myConnection;
 
@@ -89,10 +100,13 @@ private:
 	bool	myAddCoRRE;
 	bool	myAddRRE;
 	bool	myIsBatchMode;
+//XXX:useless	bool	myIsLittleEndian;
 	bool	myIsListenSpecified;
 	bool	myIsShareDesktop;
 	bool	myIsSwapMouse;
 	bool	myIsUse8bit;
+	
+	VNCOptions m_opts;
 };
 
 #endif

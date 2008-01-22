@@ -132,5 +132,17 @@
 #define XK_Alt_L		0xFFE9
 #define XK_Alt_R		0xFFEA
 
+// mmu_man
+#define XK_dead_grave	0xFE50
+#define XK_dead_acute	0xFE51
+#define XK_dead_circumflex	0xFE52
+#define XK_dead_tilde	0xFE53
+
+#define XK_dead_cedila	0xFE5B
+
+#define XK_mu                  0x0b5
+#define XK_paragraph           0x0b6
+#define XK_sterling            0x0a3
+
 #endif
 

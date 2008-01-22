@@ -296,7 +296,8 @@ typedef struct {
 #define rfbEncodingRRE 2
 #define rfbEncodingCoRRE 4
 #define rfbEncodingHextile 5
-
+#define rfbEncodingZlib 6
+#define rfbEncodingTight 7
 
 
 /*****************************************************************************
@@ -443,6 +444,31 @@ typedef struct {
 #define rfbHextileExtractW(byte) (((byte) >> 4) + 1)
 #define rfbHextileExtractH(byte) (((byte) & 0xf) + 1)
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ * ZLIB - zlib compression Encoding.  We have an rfbZlibHeader structure
+ * giving the number of bytes to follow.  Finally the data follows in
+ * zlib compressed format.
+ */
+
+typedef struct {
+    CARD32 nBytes;
+} rfbZlibHeader;
+
+#define sz_rfbZlibHeader 4
+
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ * ``Tight'' Encoding.  FIXME: Add more documentation.
+ */
+
+#define rfbTightExplicitFilter         0x04
+#define rfbTightFill                   0x08
+#define rfbTightMaxSubencoding         0x08
+
+/* Filters to improve compression efficiency */
+#define rfbTightFilterCopy             0x00
+#define rfbTightFilterPalette          0x01
+#define rfbTightFilterGradient         0x02                                         
 
 /*-----------------------------------------------------------------------------
  * SetColourMapEntries - these messages are only sent if the pixel
