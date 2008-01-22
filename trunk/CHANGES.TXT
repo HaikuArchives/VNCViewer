@@ -1,0 +1,37 @@
+BeOS VNCviewer Change History
+=============================
+
+Release 5 (98/10/25):
+	- adapted for BeOS R4b2
+	- implemented 'Send Ctrl-Alt-Del'
+	- tried to fix Server Copy/Paste, but as it works worse with the
+	  code than without the code, I eliminated the stuff... :-(
+	- well, because of the 'Send Ctrl-Alt-Del' there is now a menubar
+
+Release 4 (98/05/10):
+	- included PassControl 1.1
+	- window background color is now transparent (eliminates some
+	  flickering)
+	- source fixes for ppc
+	- thanks to Brad Ackerman <bsa3@cornell.edu>, we now have a
+	  ppc version of the resource and project files
+
+Release 3 (98/04/19):
+	- Hextile encoding works now
+	- some nasty deadlocks fixed
+	- mouse button up events behave correct
+	- made some speed and responce enhancements
+	- implemented the PassControl made by John Wiggings
+
+Release 2 (98/04/13):
+	- control modifier key works now
+	- hides the BeOS cursor if the mouse pointer is in our window
+	- copy/paste implemented (paste on middle mouse button)
+	- maps 'Command-X' to 'Left_Alt-X' for now
+
+Release 1 (98/04/11):
+	- first public release
+
+
+Andreas F. Bobak
+<bobak@abstrakt.ch>
