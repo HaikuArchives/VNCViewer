@@ -31,8 +31,11 @@
 
 // check for BONE_VERSION
 #include <sys/socket.h>
+// actually for net_server
+#include <netinet/in.h>
 
-#ifndef BONE_VERSION
+#if IPPROTO_TCP != 6
+// net_server
 # include <net/netdb.h>
 //# include <net/socket.h>
 #else

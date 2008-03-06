@@ -120,7 +120,7 @@ APP_VERSION =
 DRIVER_PATH = 
 
 # check for net_server vs BONE
-ifeq ($(findstring headers/be/bone,$(BEINCLUDES)),)
+ifeq ($(wildcard /boot/develop/lib/*/libsocket.so),)
 NETLIBS=net
 else
 NETLIBS=socket bind
