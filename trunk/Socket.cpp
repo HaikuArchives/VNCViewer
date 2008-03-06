@@ -45,6 +45,12 @@
 # define closesocket close
 #endif
 
+#ifndef __HAIKU__
+// BeOS used signed int
+// Haiku fixed it and used unsigned socklen_t type.
+typedef int socklen_t;
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 
@@ -311,7 +317,7 @@ int
 Socket::AcceptTcpConnection( void )
 {
     struct sockaddr_in addr;
-    int	addrlen	= sizeof(addr);
+    socklen_t	addrlen	= sizeof(addr);
     int	one		= 1;
 
 	mySocket = ::accept( myListenSocket, (struct sockaddr *) &addr, &addrlen );
@@ -365,7 +371,7 @@ bool
 Socket::SameMachine( void )
 {
 	struct sockaddr_in peeraddr, myaddr;
-	int addrlen = sizeof(struct sockaddr_in);
+	socklen_t addrlen = sizeof(struct sockaddr_in);
 	
 	getpeername( mySocket, (struct sockaddr *)&peeraddr, &addrlen );
 	getsockname( mySocket, (struct sockaddr *)&myaddr, &addrlen );
