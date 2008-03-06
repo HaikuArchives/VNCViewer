@@ -53,6 +53,7 @@ typedef int socklen_t;
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "App.h"
 #include "Socket.h"

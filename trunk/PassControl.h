@@ -21,7 +21,7 @@ virtual				~PassControl(); // deletes filter
 void				PopChar(); // deletes last character
 void				PushChar(BMessage* msg); // adds a char to actual
 
-inline const char	*PassControl::actualText() const
+inline const char	*actualText() const
 					{
 						return actual;
 					}
