@@ -119,11 +119,16 @@ APP_VERSION =
 #	/dev/video/usb when loaded. Default is "misc".
 DRIVER_PATH = 
 
-# check for net_server vs BONE
-ifeq ($(wildcard /boot/develop/lib/*/libsocket.so),)
-NETLIBS=net
+# check for Haiku vs BeOS
+ifneq ($(wildcard /boot/develop/lib/*/libnetwork.so),)
+NETLIBS=network
 else
+# check for net_server vs BONE
+ifneq ($(wildcard /boot/develop/lib/*/libsocket.so),)
 NETLIBS=socket bind
+else
+NETLIBS=net
+endif
 endif
 
 ## include the makefile-engine
