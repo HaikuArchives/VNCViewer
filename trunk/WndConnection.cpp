@@ -833,17 +833,17 @@ gotone:
 			printf("UTF8-> '%c'\n", buff[0]);
 			
 			switch (buff[0]) {
-			case 'ç':
+			case '\xe7':
 				*dead_key = XK_dead_cedila;
 				bytes[0] = 'c';
 				break;
-			case 'µ':
+			case '\xb5':
 				bytes[0] = XK_mu;
 				break;
-			case '§':
+			case '\xa7':
 				bytes[0] = XK_paragraph;
 				break;
-			case '£':
+			case '\xa3':
 				bytes[0] = XK_sterling;
 				break;
 			default:
