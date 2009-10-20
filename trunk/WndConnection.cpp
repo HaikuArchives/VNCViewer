@@ -1122,14 +1122,14 @@ ViewConnection::SendMouse( BPoint point )
 	if (App::GetApp()->IsSwapMouse())
 	{
 		mask = (((buttons & B_PRIMARY_MOUSE_BUTTON) ? rfbButton1Mask : 0) |
-				((buttons & B_SECONDARY_MOUSE_BUTTON) ? rfbButton3Mask : 0) |
-				((buttons & B_TERTIARY_MOUSE_BUTTON) ? rfbButton2Mask : 0)  );
+				((buttons & B_SECONDARY_MOUSE_BUTTON) ? rfbButton2Mask : 0) |
+				((buttons & B_TERTIARY_MOUSE_BUTTON) ? rfbButton3Mask : 0)  );
 	}
 	else
 	{
 		mask = (((buttons & B_PRIMARY_MOUSE_BUTTON) ? rfbButton1Mask : 0) |
-				((buttons & B_SECONDARY_MOUSE_BUTTON) ? rfbButton2Mask : 0) |
-				((buttons & B_TERTIARY_MOUSE_BUTTON) ? rfbButton3Mask : 0)  );
+				((buttons & B_SECONDARY_MOUSE_BUTTON) ? rfbButton3Mask : 0) |
+				((buttons & B_TERTIARY_MOUSE_BUTTON) ? rfbButton2Mask : 0)  );
 	}
 	myConnection->SendPointerEvent( point.x + hScrollPos, point.y + vScrollPos, mask );
 }
@@ -1162,7 +1162,7 @@ ViewConnection::MouseDown( BPoint point )
 	// not the elegant way for pasting, but it works
 	uint32	buttons;
 	Window()->CurrentMessage()->FindInt32( "buttons", (long*)&buttons ); 
-#if 1
+#if 0
 //$$$ why the hell doesn't this work? it messes with the whole server clipboard...
 	if (buttons & (App::GetApp()->IsSwapMouse() ? B_TERTIARY_MOUSE_BUTTON : B_SECONDARY_MOUSE_BUTTON))
 	{
