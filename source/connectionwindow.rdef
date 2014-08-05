@@ -1,0 +1,219 @@
+
+resource(0, "ConnectionWindow") #'ARCV' archive BWindow {
+	"_prio" = 15,
+	"_port_cap" = 100,
+	"_title" = "Connection details",
+	"_wlook" = 1,
+	"_sizel" = 32.0000,
+	"_sizel" = 32.0000,
+	"_sizel" = 10000.0,
+	"_sizel" = 10000.0,
+	"ID" = 23,
+	"_flags" = 76,
+	"_type" = 1,
+	"_wfeel" = 0,
+	"_name" = "Connection details",
+	"_frame" = rect { 230.000, 298.000, 659.000, 422.000 },
+	"minWidth" = 32.0000,
+	"maxWidth" = 10000.0,
+	"minHeight" = 32.0000,
+	"maxHeight" = 10000.0,
+	"_views" = archive BView {
+		"_name" = "",
+		"_frame" = rect { 0.00000, 0.00000, 429.000, 124.000 },
+		"_resize_mode" = 4626,
+		"_flags" = 536870912,
+		"_color" = 255,
+		"_color" = -1,
+		"_color" = -656877313,
+		"_views" = archive BStringView {
+			"_name" = "",
+			"_frame" = rect { 23.0000, 33.0000, 85.0000, 47.0000 },
+			"_resize_mode" = 4626,
+			"_flags" = 536870912,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_fflt" = 10.0000,
+			"_fflt" = 90.0000,
+			"_fflt" = 0.00000,
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_text" = "VNC server:",
+			"_align" = 0
+		},
+		"_views" = archive BTextControl {
+			"_name" = "serverText",
+			"_frame" = rect { 88.0000, 30.0000, 292.000, 51.0000 },
+			"_resize_mode" = 4626,
+			"_flags" = 603979776,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_fflt" = 10.0000,
+			"_fflt" = -1.00000,
+			"_fflt" = -1.00000,
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_ploc" = point { 3.00000, 16.0000 },
+			"_views" = archive _BTextInput_ {
+				"_name" = "_input_",
+				"_frame" = rect { 9.00000, 3.00000, 201.000, 16.0000 },
+				"_resize_mode" = 4628,
+				"_flags" = 876609536,
+				"_color" = 255,
+				"_color" = -1,
+				"_color" = -1,
+				"_ploc" = point { 1.00000, 10.0000 },
+				"_text" = "",
+				"_tab" = 28.0000,
+				"_max" = 2147483647,
+				"_trect" = rect { 0.00000, 0.00000, 0.00000, 13.0000 },
+				"_sel" = 0,
+				"_sel" = 0,
+				"_col_sp" = 4,
+				"_runs" = array {
+					$"416C692100000000000000010000000053776973373231204254000000000000"
+					$"0000000000000000000000000000000000000000000000000000000000000000"
+					$"00000000000000000000000000000000526F6D616E0000000000000000000000"
+					$"0000000000000000000000000000000000000000000000000000000000000000"
+					$"000000000000000000000000000000004120000042B400000000000000FF0000"
+				}
+			},
+			"_label" = "",
+			"_a_label" = 0,
+			"_a_text" = 0,
+			"_divide" = 3.00000
+		},
+		"_views" = archive BMenuField {
+			"_name" = "hostList",
+			"_frame" = rect { 294.000, 28.0000, 324.000, 50.0000 },
+			"_resize_mode" = 4626,
+			"_flags" = 570425344,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_fflt" = 10.0000,
+			"_fflt" = -1.00000,
+			"_fflt" = -1.00000,
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_views" = archive _BMCMenuBar_ {
+				"_name" = "_mc_mb_",
+				"_frame" = rect { 2.00000, 3.00000, 20.0000, 19.0000 },
+				"_resize_mode" = 4626,
+				"_flags" = 603979776,
+				"_fname" = "Swis721 BT",
+				"_fname" = "Roman",
+				"_fflt" = 10.0000,
+				"_fflt" = -1.00000,
+				"_fflt" = -1.00000,
+				"_color" = 255,
+				"_color" = -656877568,
+				"_color" = -656877568,
+				"_ploc" = point { 12.0000, 11.0000 },
+				"_rsize_to_fit" = true,
+				"_maxwidth" = 12.0000,
+				"_items" = archive _BMCItem_ {
+					"_label" = "",
+					"_submenu" = archive BPopUpMenu {
+						"_name" = "",
+						"_frame" = rect { 0.00000, 0.00000, 0.00000, 0.00000 },
+						"_flags" = 536870912,
+						"_fname" = "Swis721 BT",
+						"_fname" = "Roman",
+						"_fflt" = 10.0000,
+						"_fflt" = -1.00000,
+						"_fflt" = -1.00000,
+						"_color" = 255,
+						"_color" = -656877568,
+						"_color" = -656877568,
+						"_layout" = 1,
+						"_rsize_to_fit" = true
+					}
+				},
+				"_border" = 1
+			},
+			"_label" = "",
+			"_align" = 0,
+			"_divide" = 0.00000
+		},
+		"_views" = archive BButton {
+			"_name" = "",
+			"_frame" = rect { 348.000, 26.0000, 423.000, 56.0000 },
+			"_resize_mode" = 4626,
+			"_flags" = 570425344,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_msg" = message('okay'),
+			"_label" = "OK",
+			"_default" = true
+		},
+		"_views" = archive BButton {
+			"_name" = "",
+			"_frame" = rect { 349.000, 60.0000, 424.000, 84.0000 },
+			"_resize_mode" = 4626,
+			"_flags" = 570425344,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_msg" = message('_QRQ'),
+			"_label" = "Cancel"
+		},
+		"_views" = archive BButton {
+			"_name" = "",
+			"_frame" = rect { 350.000, 89.0000, 425.000, 113.000 },
+			"_resize_mode" = 4626,
+			"_flags" = 570425344,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_color" = 255,
+			"_color" = -656877313,
+			"_color" = -656877313,
+			"_msg" = message('opti'),
+			"_label" = "Options..."
+		},
+		"_views" = archive BTextView {
+			"_name" = "",
+			"_frame" = rect { 96.0000, 61.0000, 283.000, 101.000 },
+			"_resize_mode" = 4626,
+			"_flags" = 910163968,
+			"_fname" = "Swis721 BT",
+			"_fname" = "Roman",
+			"_fflt" = 10.0000,
+			"_fflt" = 90.0000,
+			"_fflt" = 0.00000,
+			"_color" = 255,
+			"_color" = -656877568,
+			"_color" = -656877568,
+			"_ploc" = point { 160.000, 37.0000 },
+			#'CSTR' array "_text" =  array {
+				"Use host:display\ne.g. snoopy:2\n(Display defaults to 0 if not g"
+				"iven)\n"
+			},
+			"_tab" = 28.0000,
+			"_max" = 2147483647,
+			"_wrap" = true,
+			"_trect" = rect { 1.00000, 1.00000, 186.000, 53.0000 },
+			"_nsel" = true,
+			"_nedit" = true,
+			"_sel" = 0,
+			"_sel" = 0,
+			"_stylable" = true,
+			"_col_sp" = 4,
+			"_runs" = array {
+				$"416C692100000000000000010000000053776973373231204254000000000000"
+				$"0000000000000000000000000000000000000000000000000000000000000000"
+				$"00000000000000000000000000000000526F6D616E0000000000000000000000"
+				$"0000000000000000000000000000000000000000000000000000000000000000"
+				$"000000000000000000000000000000004120000042B400000000000000FF0000"
+			}
+		}
+	},
+	"designfsize" = 11.9873
+};

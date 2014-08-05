@@ -41,12 +41,12 @@ d3des.c vncauth.c
 
 #	specify the resource definition files to use
 #	full path or a relative path to the resource file can be used.
-RDEFS= 
+RDEFS=VNCviewer.rdef connectionwindow.rdef optionswindow.rdef passwordwindow.rdef
 	
 #	specify the resource files to use. 
 #	full path or a relative path to the resource file can be used.
 #	both RDEFS and RSRCS can be defined in the same makefile.
-RSRCS= VNCviewer.rsrc connectionwindow.rsrc optionswindow.rsrc passwordwindow.rsrc
+RSRCS=
 
 # @<-src@ 
 #%}
