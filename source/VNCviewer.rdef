@@ -6,10 +6,10 @@ resource app_version {
 	minor  = 1,
 
 	variety = B_APPV_DEVELOPMENT,
-	internal = 4,
+	internal = 6,
 
 	short_info = "VNCviewer",
-	long_info = "VNCviewer v3.3.1 Release 4 for BeOS. BeOS port Copyright (C) "
+	long_info = "VNCviewer v3.3.1 Release 6 for BeOS. BeOS port Copyright (C) "
 		"Andreas F. Bobak. VNCviewer is published under the GNU public license."
 };
 

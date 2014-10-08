@@ -25,12 +25,14 @@
 
 // VNCOptions.cpp: implementation of the VNCOptions class.
 
+#include <stdio.h>
 #include <string.h>
+#include <strings.h>
+
 #include <File.h>
 #include <Alert.h>
 #include <Application.h>
 #include <StorageDefs.h>
-#include <stdio.h>
 
 #include "App.h"//#include "rfb.h"
 #include "VNCOptions.h"
