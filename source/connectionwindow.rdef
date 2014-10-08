@@ -114,7 +114,7 @@ resource(0, "ConnectionWindow") #'ARCV' archive BWindow {
 				"_ploc" = point { 12.0000, 11.0000 },
 				"_rsize_to_fit" = true,
 				"_maxwidth" = 12.0000,
-				"_items" = archive _BMCItem_ {
+				"_items" = archive BMenuItem {
 					"_label" = "",
 					"_submenu" = archive BPopUpMenu {
 						"_name" = "",
