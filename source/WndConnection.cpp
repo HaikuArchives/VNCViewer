@@ -892,7 +892,7 @@ gotone:
 	case B_FUNCTION_KEY:	
 	{
 		int32 k;
-		Window()->CurrentMessage()->FindInt32( "key", (long*)&k );
+		Window()->CurrentMessage()->FindInt32( "key", (int32*)&k );
 	
 			switch (k)
 		{
@@ -941,7 +941,7 @@ gotone:
 	case B_FUNCTION_KEY:
 	  {
 		int32 k;
-		Window()->CurrentMessage()->FindInt32( "key", (long*)&k );
+		Window()->CurrentMessage()->FindInt32( "key", (int32*)&k );
 		switch (k)
 		{
 		case B_F1_KEY:		key = XK_F1; break;
@@ -1117,7 +1117,7 @@ ViewConnection::SendMouse( BPoint point )
 	
 	(void)SendModifier( &dummy, 1 );
 
-	Window()->CurrentMessage()->FindInt32( "buttons", (long*)&buttons ); 
+	Window()->CurrentMessage()->FindInt32( "buttons", (int32*)&buttons ); 
 
 	if (App::GetApp()->IsSwapMouse())
 	{
@@ -1161,7 +1161,7 @@ ViewConnection::MouseDown( BPoint point )
 
 	// not the elegant way for pasting, but it works
 	uint32	buttons;
-	Window()->CurrentMessage()->FindInt32( "buttons", (long*)&buttons ); 
+	Window()->CurrentMessage()->FindInt32( "buttons", (int32*)&buttons ); 
 #if 0
 //$$$ why the hell doesn't this work? it messes with the whole server clipboard...
 	if (buttons & (App::GetApp()->IsSwapMouse() ? B_TERTIARY_MOUSE_BUTTON : B_SECONDARY_MOUSE_BUTTON))

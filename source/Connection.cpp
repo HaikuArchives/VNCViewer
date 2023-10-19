@@ -450,7 +450,7 @@ Connection::SetPixelFormat( const rfbPixelFormat* format )
 	spf.format.blueMax		= Swap16IfLE( spf.format.blueMax );
 #if defined(__POWERPC__)
 	spf.format.bigEndian	= 1;
-#elif defined(__INTEL__)
+#elif defined(__INTEL__) || defined(__amd64__)
 	spf.format.bigEndian	= 0;
 #else
 #error	Endianess not defined!
@@ -478,7 +478,7 @@ Connection::SetupPixelFormat( void )
 		myFormat	= vnc16bitFormat;
 #if defined(__POWERPC__)
 		result		= B_RGB16_BIG;
-#elif defined(__INTEL__)
+#elif defined(__INTEL__) || defined(__amd64__)
 		result		= B_RGB16;
 #else
 #error	Endianess not defined!

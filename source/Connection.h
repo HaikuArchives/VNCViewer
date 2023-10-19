@@ -37,7 +37,7 @@
 #if defined(__POWERPC__)
 #define Swap16IfLE(s)	s
 #define Swap32IfLE(l)	l
-#elif defined(__INTEL__)
+#elif defined(__INTEL__) || defined(__amd64__)
 #define Swap16IfLE(s)	swap16( s )
 #define Swap32IfLE(l)	swap32( l )
 #else

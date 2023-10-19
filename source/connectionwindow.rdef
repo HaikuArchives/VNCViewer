@@ -192,7 +192,7 @@ resource(0, "ConnectionWindow") #'ARCV' archive BWindow {
 			"_color" = -656877568,
 			"_color" = -656877568,
 			"_ploc" = point { 160.000, 37.0000 },
-			#'CSTR' array "_text" =  array {
+			array "_text" =  array {
 				"Use host:display\ne.g. snoopy:2\n(Display defaults to 0 if not g"
 				"iven)\n"
 			},

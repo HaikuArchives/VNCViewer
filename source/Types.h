@@ -35,8 +35,8 @@ typedef   signed char	s8;			// signed 8-bit quantity
 typedef unsigned char	u8;			// unsigned 8-bit quantity
 typedef   signed short	s16;		// signed 16-bit quantity
 typedef unsigned short	u16;		// unsigned 16-bit quantity
-typedef   signed long	s32;		// signed 32-bit quantity
-typedef unsigned long	u32;		// unsigned 32-bit quantity
+typedef   signed int	s32;		// signed 32-bit quantity
+typedef unsigned int	u32;		// unsigned 32-bit quantity
 
 typedef   signed char	schar;		// signed character quantity
 typedef unsigned char	uchar;		// unsigned character quantity
